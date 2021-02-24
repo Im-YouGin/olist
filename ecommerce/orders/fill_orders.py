@@ -45,14 +45,34 @@ def fill_geolocation():
                     geo.period_to = datetime.now()
                     geo.save()
 
-                    new_obj = Geolocation.objects.create(
+                    new_geo = Geolocation.objects.create(
                         id=geo.id,
                         zip_code=zip_code,
                         **row
                     )
 
-                    Customer.objects.filter(geolocation=geo).update(geolocation=new_obj)
-                    Seller.objects.filter(geolocation=geo).update(geolocation=new_obj)
+                    for obj in Customer.objects.filter(geolocation=geo):
+                        obj.current_flag = False
+                        obj.period_to = datetime.now()
+                        obj.save()
+
+                        Customer.objects.create(
+                            id=obj.id,
+                            customer_key=obj.customer_key,
+                            geolocation=new_geo
+                        )
+
+                    for obj in Seller.objects.filter(geolocation=geo):
+                        obj.current_flag = False
+                        obj.period_to = datetime.now()
+                        obj.save()
+
+                        Seller.objects.create(
+                            id=obj.id,
+                            seller_key=obj.seller_key,
+                            geolocation=new_geo
+                        )
+
             else:
                 Geolocation.objects.create(
                     id=get_next_id(Geolocation),
@@ -83,13 +103,27 @@ def fill_product_category():
                     cat.period_to = datetime.now()
                     cat.save()
 
-                    new_obj = ProductCategory.objects.create(
+                    new_cat = ProductCategory.objects.create(
                         id=cat.id,
                         name=name,
                         **row
                     )
 
-                    Product.objects.filter(category=cat).update(category=new_obj)
+                    for obj in Product.objects.filter(category=cat):
+                        obj.current_flag = False
+                        obj.period_to = datetime.now()
+                        obj.save()
+
+                        Product.objects.create(
+                            id=obj.id,
+                            product_key=obj.product.key,
+                            price=obj.price,
+                            weight=obj.weight,
+                            length=obj.length,
+                            height=obj.height,
+                            width=obj.width,
+                            category=new_cat
+                        )
             else:
                 ProductCategory.objects.create(
                     id=get_next_id(ProductCategory),
@@ -173,13 +207,11 @@ def get_shipping_obj(row):
                 ship.delivered_customer != row['order_delivered_customer_date'] or
                 ship.estimated_delivery != row['order_estimated_delivery_date']
             ):
-                print('+')
-
                 ship.current_flag = False
                 ship.period_to = datetime.now()
                 ship.save()
 
-                new_obj = ShippingDetail.objects.create(
+                new_ship = ShippingDetail.objects.create(
                     id=ship.id,
                     status=status,
                     freight_value=row['freight_value'],
@@ -191,10 +223,21 @@ def get_shipping_obj(row):
                     estimated_delivery=row['order_estimated_delivery_date']
                 )
 
-                OrderDetail.objects.filter(shipping_detail=ship).update(
-                    shipping_detail=new_obj)
+                for obj in OrderDetail.objects.filter(shipping_detail=ship):
+                    obj.current_flag = False
+                    obj.period_to = datetime.now()
+                    obj.save()
 
-                return new_obj
+                    OrderDetail.objects.create(
+                        id=obj.id,
+                        order_key=obj.order_key,
+                        n_items=obj.n_items,
+                        payment_value=obj.payment_value,
+                        payment_method=obj.payment_method,
+                        shipping_detail=new_ship
+                    )
+
+                return new_ship
             return ship
 
     return ShippingDetail.objects.create(
@@ -277,8 +320,6 @@ def get_product_obj(row):
                 width=row['product_width_cm'],
                 category=cat
             )
-
-            # Order.objects.filter(product=prod).update(product=new_obj)
 
             return new_obj
         return prod
